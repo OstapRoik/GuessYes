@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook Page Metrics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* General Styling */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+        }
+
+        h1 {
+            color: #1877f2;
+            text-align: center;
+            border-bottom: 1px solid #dddfe2;
+            padding-bottom: 16px;
+            margin-top: 0;
+        }
+
+        /* Views */
+        .view {
+            display: none; /* Hidden by default */
+        }
+        .view.active {
+            display: block; /* Shown when active */
+        }
+
+        /* Login View */
+        #login-view {
+            text-align: center;
+        }
+        #login-view p {
+            font-size: 1.1em;
+            margin-bottom: 24px;
+        }
+
+        /* Controls Styling */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            padding: 16px;
+            background-color: #f0f2f5;
+            border-radius: 6px;
+            margin-bottom: 24px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex-grow: 1;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #606770;
+        }
+
+        select, input[type="date"] {
+            padding: 10px;
+            border: 1px solid #dddfe2;
+            border-radius: 6px;
+            font-size: 1em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Button Styling */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #1877f2;
+            color: white;
+            min-width: 150px;
+        }
+        .btn-primary:hover {
+            background-color: #166fe5;
+        }
+
+        /* Results Area */
+        h2 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        #metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        #metrics-table th, #metrics-table td {
+            border: 1px solid #dddfe2;
+            padding: 12px;
+            text-align: left;
+        }
+
+        #metrics-table th {
+            background-color: #f6f7f8;
+            font-weight: 600;
+        }
+
+        #metrics-table td {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 1.1em;
+            color: #333;
+        }
+
+        #metrics-table td:first-child {
+            font-family: inherit;
+            font-size: 1em;
+            color: #606770;
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #1877f2;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Status Messages */
+        #status-message {
+            text-align: center;
+            padding: 16px;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-weight: 500;
+        }
+        #status-message.error {
+            background-color: #fbe3e4;
+            color: #d12f19;
+        }
+    </style>
+</head>
+<body>
+
+<div id="fb-root"></div>
+
+<div class="container">
+    <h1>Facebook Page Metrics</h1>
+
+    <div id="login-view" class="view active">
+        <p>Please log in with Facebook to select a page and view its metrics.</p>
+        <button id="login-button" class="btn btn-primary">Log In with Facebook</button>
+    </div>
+
+    <div id="data-view" class="view">
+        <div class="controls">
+            <div class="control-group">
+                <label for="page-select">Select a Page:</label>
+                <select id="page-select"></select>
+            </div>
+            <div class="control-group">
+                <label for="start-date">Start Date:</label>
+                <input type="date" id="start-date">
+            </div>
+            <div class="control-group">
+                <label for="end-date">End Date:</label>
+                <input type="date" id="end-date">
+            </div>
+            <button id="fetch-button" class="btn btn-primary">Get Metrics</button>
+        </div>
+
+        <div id="results-area" style="display: none;">
+            <h2>Aggregated Metrics</h2>
+            <table id="metrics-table">
+                <tbody>
+                <tr><th>Total Likes</th><td id="total-likes"></td></tr>
+                <tr><th>Total Comments</th><td id="total-comments"></td></tr>
+                <tr><th>Total Reach</th><td id="total-reach"></td></tr>
+                <tr><th>Organic Reach</th><td id="organic-reach"></td></tr>
+                <tr><th>Engagement Rate (by Followers)</th><td id="er"></td></tr>
+                <tr><th>Engagement Rate (by Reach)</th><td id="err"></td></tr>
+                </tbody>
+            </table>
+
+            <h2>Post Performance Chart</h2>
+            <p>Showing reach for the most recent posts in the selected period.</p>
+            <canvas id="metrics-chart"></canvas>
+        </div>
+        <div id="status-message"></div>
+    </div>
+
+    <div id="loader" class="view">
+        <div class="spinner"></div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // --- CONFIGURATION ---
+        const FB_APP_ID = 'YOUR_APP_ID'; // IMPORTANT: Replace with your Facebook App ID
+        const FB_API_VERSION = 'v23.0';
+
+        // --- DOM ELEMENTS ---
+        const loginView = document.getElementById('login-view');
+        const dataView = document.getElementById('data-view');
+        const loader = document.getElementById('loader');
+        const loginButton = document.getElementById('login-button');
+        const pageSelect = document.getElementById('page-select');
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        const fetchButton = document.getElementById('fetch-button');
+        const resultsArea = document.getElementById('results-area');
+        const statusMessage = document.getElementById('status-message');
+
+        let chartInstance = null; // To hold the chart object
+
+        // --- INITIALIZATION ---
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId: FB_APP_ID,
+                cookie: true,
+                xfbml: true,
+                version: FB_API_VERSION
+            });
+
+            FB.getLoginStatus(function(response) {
+                statusChangeCallback(response);
+            });
+        };
+
+        // Load the SDK asynchronously
+        (function(d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s);
+            js.id = id;
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+
+
+        // --- UI CONTROL FUNCTIONS ---
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function showLoader(show) {
+            loader.style.display = show ? 'flex' : 'none';
+        }
+
+        function setStatus(message, isError = false) {
+            statusMessage.textContent = message;
+            statusMessage.className = isError ? 'error' : '';
+            statusMessage.style.display = message ? 'block' : 'none';
+        }
+
+        // --- AUTHENTICATION ---
+        function statusChangeCallback(response) {
+            showLoader(false);
+            if (response.status === 'connected') {
+                showView('data-view');
+                fetchUserPages();
+            } else {
+                showView('login-view');
+            }
+        }
+
+        function handleLogin() {
+            showLoader(true);
+            // Request permissions needed to read page data and insights
+            FB.login(statusChangeCallback, {
+                scope: 'pages_show_list,pages_read_engagement,read_insights'
+            });
+        }
+
+        // --- DATA FETCHING ---
+        async function fetchUserPages() {
+            try {
+                const response = await new Promise(resolve => {
+                    FB.api('/me/accounts', { fields: 'name,id,access_token' }, resolve);
+                });
+
+                if (response && response.data) {
+                    pageSelect.innerHTML = ''; // Clear previous options
+                    response.data.forEach(page => {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({ id: page.id, access_token: page.access_token });
+                        option.textContent = page.name;
+                        pageSelect.appendChild(option);
+                    });
+                } else {
+                    throw new Error("Could not fetch pages.");
+                }
+            } catch (error) {
+                console.error('Error fetching pages:', error);
+                setStatus('Could not fetch your pages. Please check your permissions and try again.', true);
+            }
+        }
+
+        async function fetchMetrics() {
+            showLoader(true);
+            resultsArea.style.display = 'none';
+            setStatus('');
+
+            try {
+                const selectedPage = JSON.parse(pageSelect.value);
+                const pageId = selectedPage.id;
+                const pageAccessToken = selectedPage.access_token;
+
+                const startDate = Math.floor(new Date(startDateInput.value).getTime() / 1000);
+                const endDate = Math.floor(new Date(endDateInput.value).getTime() / 1000);
+
+                if (isNaN(startDate) || isNaN(endDate)) {
+                    throw new Error("Invalid date range selected.");
+                }
+
+                // Define API requests
+                const fanCountRequest = {
+                    method: 'GET',
+                    relative_url: `${pageId}?fields=fan_count`
+                };
+
+                const postsRequest = {
+                    method: 'GET',
+                    relative_url: `${pageId}/posts?fields=message,created_time,likes.summary(true),comments.summary(true),insights.metric(post_impressions,post_impressions_organic)&since=${startDate}&until=${endDate}&limit=100`
+                };
+
+                // Use a batch request for efficiency
+                const batchResponse = await new Promise(resolve => {
+                    FB.api('/', 'POST', {
+                        access_token: pageAccessToken,
+                        batch: [fanCountRequest, postsRequest]
+                    }, resolve);
+                });
+
+                if(batchResponse.error) throw new Error(batchResponse.error.message);
+
+                const fanCountResponse = JSON.parse(batchResponse[0].body);
+                const postsResponse = JSON.parse(batchResponse[1].body);
+
+                if (fanCountResponse.error) throw new Error(`Fan Count Error: ${fanCountResponse.error.message}`);
+                if (postsResponse.error) throw new Error(`Posts Error: ${postsResponse.error.message}`);
+
+                const fanCount = fanCountResponse.fan_count || 0;
+                const posts = postsResponse.data || [];
+
+                if (posts.length === 0) {
+                    setStatus('No posts found in the selected date range.');
+                    showLoader(false);
+                    return;
+                }
+
+                processAndDisplayMetrics(posts, fanCount);
+
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+                setStatus(`An error occurred: ${error.message}`, true);
+            } finally {
+                showLoader(false);
+            }
+        }
+
+        // --- DATA PROCESSING & DISPLAY ---
+        function processAndDisplayMetrics(posts, fanCount) {
+            let totalLikes = 0;
+            let totalComments = 0;
+            let totalReach = 0;
+            let totalOrganicReach = 0;
+
+            posts.forEach(post => {
+                totalLikes += post.likes?.summary?.total_count || 0;
+                totalComments += post.comments?.summary?.total_count || 0;
+
+                const insightsData = post.insights?.data;
+                if (insightsData) {
+                    const reachMetric = insightsData.find(m => m.name === 'post_impressions');
+                    const organicReachMetric = insightsData.find(m => m.name === 'post_impressions_organic');
+
+                    totalReach += reachMetric?.values[0]?.value || 0;
+                    totalOrganicReach += organicReachMetric?.values[0]?.value || 0;
+                }
+            });
+
+            const totalEngagements = totalLikes + totalComments;
+
+            // Calculate ER (Engagement Rate by Followers)
+            // Note: This uses the current fan count as an approximation.
+            const er = fanCount > 0 ? ((totalEngagements / fanCount) * 100).toFixed(2) + '%' : 'N/A';
+
+            // Calculate ERR (Engagement Rate by Reach)
+            const err = totalReach > 0 ? ((totalEngagements / totalReach) * 100).toFixed(2) + '%' : 'N/A';
+
+            // Update the table
+            document.getElementById('total-likes').textContent = totalLikes.toLocaleString();
+            document.getElementById('total-comments').textContent = totalComments.toLocaleString();
+            document.getElementById('total-reach').textContent = totalReach.toLocaleString();
+            document.getElementById('organic-reach').textContent = totalOrganicReach.toLocaleString();
+            document.getElementById('er').textContent = er;
+            document.getElementById('err').textContent = err;
+
+            renderChart(posts);
+
+            resultsArea.style.display = 'block';
+        }
+
+        function renderChart(posts) {
+            const ctx = document.getElementById('metrics-chart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Use the most recent 15 posts for chart clarity
+            const chartPosts = posts.slice(0, 15).reverse();
+
+            const labels = chartPosts.map((p, i) => `Post ${i + 1}`);
+            const reachData = chartPosts.map(p => p.insights?.data.find(m => m.name === 'post_impressions')?.values[0]?.value || 0);
+            const organicReachData = chartPosts.map(p => p.insights?.data.find(m => m.name === 'post_impressions_organic')?.values[0]?.value || 0);
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Total Reach',
+                        data: reachData,
+                        backgroundColor: 'rgba(24, 119, 242, 0.7)',
+                        borderColor: 'rgba(24, 119, 242, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Organic Reach',
+                        data: organicReachData,
+                        backgroundColor: 'rgba(52, 168, 83, 0.7)',
+                        borderColor: 'rgba(52, 168, 83, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000) {
+                                        return (value / 1000) + 'k';
+                                    }
+                                    return value;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                title: (tooltipItems) => {
+                                    const index = tooltipItems[0].dataIndex;
+                                    // Display post message or created date as tooltip title
+                                    const post = chartPosts[index];
+                                    return post.message ? post.message.substring(0, 50) + '...' : new Date(post.created_time).toLocaleDateString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- EVENT LISTENERS ---
+        loginButton.addEventListener('click', handleLogin);
+        fetchButton.addEventListener('click', fetchMetrics);
+
+        // --- SET INITIAL STATE ---
+        function setDefaultDates() {
+            const today = new Date();
+            const pastDate = new Date();
+            pastDate.setDate(today.getDate() - 29); // Default to last 30 days
+
+            endDateInput.value = today.toISOString().split('T')[0];
+            startDateInput.value = pastDate.toISOString().split('T')[0];
+        }
+
+        setDefaultDates();
+        showLoader(true); // Show loader initially until FB SDK determines login status
+
+    })();
+</script>
+
+</body>
+</html>
