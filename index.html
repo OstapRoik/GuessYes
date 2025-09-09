@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facebook Page Metrics Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
         /* General Styling */
@@ -14,10 +15,6 @@
             color: #1c1e21;
             margin: 0;
             padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
         }
 
         .container {
@@ -27,6 +24,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             padding: 24px;
+            margin: 20px auto;
         }
 
         h1 {
@@ -37,153 +35,67 @@
             margin-top: 0;
         }
 
-        /* Views */
-        .view {
-            display: none; /* Hidden by default */
-        }
-        .view.active {
-            display: block; /* Shown when active */
-        }
+        .view { display: none; }
+        .view.active { display: block; }
 
-        /* Login View */
-        #login-view {
-            text-align: center;
-        }
-        #login-view p {
-            font-size: 1.1em;
-            margin-bottom: 24px;
-        }
+        #login-view { text-align: center; }
+        #login-view p { font-size: 1.1em; margin-bottom: 24px; }
 
-        /* Controls Styling */
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
-            align-items: center;
+            align-items: flex-end;
             padding: 16px;
-            background-color: #f0f2f5;
+            background-color: #f8f9fa;
             border-radius: 6px;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex-grow: 1;
-        }
+        .control-group { display: flex; flex-direction: column; gap: 4px; }
+        .control-group.full-width { grid-column: 1 / -1; }
+        label { font-weight: 600; font-size: 0.9em; color: #606770; }
 
-        label {
-            font-weight: 600;
-            font-size: 0.9em;
-            color: #606770;
-        }
+        .dropdown-menu { width: 100%; max-height: 250px; overflow-y: auto; }
+        #fetch-button { height: 45px; }
 
-        select, input[type="date"] {
-            padding: 10px;
-            border: 1px solid #dddfe2;
-            border-radius: 6px;
-            font-size: 1em;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        /* Button Styling */
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .btn-primary {
-            background-color: #1877f2;
-            color: white;
-            min-width: 150px;
-        }
-        .btn-primary:hover {
-            background-color: #166fe5;
-        }
-
-        /* Results Area */
         h2 {
             color: #333;
             border-bottom: 1px solid #eee;
             padding-bottom: 8px;
+            margin-top: 32px;
         }
 
-        #metrics-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 24px;
-        }
-
-        #metrics-table th, #metrics-table td {
-            border: 1px solid #dddfe2;
-            padding: 12px;
-            text-align: left;
-        }
-
-        #metrics-table th {
-            background-color: #f6f7f8;
-            font-weight: 600;
-        }
-
-        #metrics-table td {
+        #metrics-table td, #per-post-metrics-table td {
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
-            font-size: 1.1em;
-            color: #333;
+            font-size: 1.05em;
         }
-
-        #metrics-table td:first-child {
+        #per-post-metrics-table td.post-message {
             font-family: inherit;
-            font-size: 1em;
-            color: #606770;
+            font-size: 0.9em;
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* Loader */
+        [data-bs-toggle="tooltip"] {
+            cursor: help;
+        }
+
         #loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
             z-index: 1000;
         }
+        .spinner-border { width: 50px; height: 50px; }
 
-        .spinner {
-            border: 6px solid #f3f3f3;
-            border-top: 6px solid #1877f2;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Status Messages */
         #status-message {
-            text-align: center;
-            padding: 16px;
-            border-radius: 6px;
-            margin-top: 20px;
-            font-weight: 500;
+            text-align: center; padding: 16px; border-radius: 6px;
+            margin-top: 20px; font-weight: 500;
         }
-        #status-message.error {
-            background-color: #fbe3e4;
-            color: #d12f19;
-        }
+        #status-message.error { background-color: #fbe3e4; color: #d12f19; }
     </style>
 </head>
 <body>
@@ -199,25 +111,74 @@
     </div>
 
     <div id="data-view" class="view">
-        <div class="controls">
+        <div class="controls-grid">
             <div class="control-group">
-                <label for="page-select">Select a Page:</label>
-                <select id="page-select"></select>
+                <label for="page-dropdown-button">Select a Page:</label>
+                <div class="dropdown">
+                    <button class="btn btn-light border dropdown-toggle" type="button" id="page-dropdown-button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Select a Page
+                    </button>
+                    <ul class="dropdown-menu" id="page-select-list"></ul>
+                </div>
             </div>
             <div class="control-group">
                 <label for="start-date">Start Date:</label>
-                <input type="date" id="start-date">
+                <input type="date" id="start-date" class="form-control"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="The beginning of the date range for fetching post data.">
             </div>
             <div class="control-group">
                 <label for="end-date">End Date:</label>
-                <input type="date" id="end-date">
+                <input type="date" id="end-date" class="form-control"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="The end of the date range for fetching post data.">
             </div>
             <button id="fetch-button" class="btn btn-primary">Get Metrics</button>
         </div>
 
+        <div class="controls-grid">
+            <div class="control-group full-width"><label>CERI Parameters</label></div>
+            <div class="control-group">
+                <label for="w1-input">Weight w1 (ER)</label>
+                <input type="number" id="w1-input" class="form-control" value="0.5" step="0.1"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="Importance of Engagement Rate by Followers (ER). w1+w2 should ideally be 1.">
+            </div>
+            <div class="control-group">
+                <label for="w2-input">Weight w2 (ERR)</label>
+                <input type="number" id="w2-input" class="form-control" value="0.5" step="0.1"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="Importance of Engagement Rate by Reach (ERR). w1+w2 should ideally be 1.">
+            </div>
+            <div class="control-group">
+                <label for="roi-input">ROI (%)</label>
+                <input type="number" id="roi-input" class="form-control" value="150"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="Your campaign's Return On Investment. E.g., 150% means $1.50 earned per $1 spent.">
+            </div>
+            <div class="control-group">
+                <label for="max-roi-input">Max ROI (%)</label>
+                <input type="number" id="max-roi-input" class="form-control" value="500"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="The benchmark or target ROI you are comparing against in the CERI formula.">
+            </div>
+            <div class="control-group">
+                <label for="cpe-input">CPE ($)</label>
+                <input type="number" id="cpe-input" class="form-control" value="0.10" step="0.01"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="Your campaign's average Cost Per Engagement (like, comment, share, etc.).">
+            </div>
+            <div class="control-group">
+                <label for="max-cpe-input">Max CPE ($)</label>
+                <input type="number" id="max-cpe-input" class="form-control" value="0.50" step="0.01"
+                       data-bs-toggle="tooltip" data-bs-placement="bottom"
+                       data-bs-title="The maximum Cost Per Engagement you are willing to accept. Used as a benchmark.">
+            </div>
+        </div>
+
         <div id="results-area" style="display: none;">
             <h2>Aggregated Metrics</h2>
-            <table id="metrics-table">
+            <table id="metrics-table" class="table table-bordered">
                 <tbody>
                 <tr><th>Total Likes</th><td id="total-likes"></td></tr>
                 <tr><th>Total Comments</th><td id="total-comments"></td></tr>
@@ -225,21 +186,46 @@
                 <tr><th>Organic Reach</th><td id="organic-reach"></td></tr>
                 <tr><th>Engagement Rate (by Followers)</th><td id="er"></td></tr>
                 <tr><th>Engagement Rate (by Reach)</th><td id="err"></td></tr>
+                <tr>
+                    <th class="fw-bold">CERI (Composite Index)</th>
+                    <td id="ceri" class="fw-bold" data-bs-toggle="tooltip" data-bs-placement="top" title=""></td>
+                </tr>
                 </tbody>
             </table>
 
+            <h2>Per-Post Metrics</h2>
+            <div class="table-responsive">
+                <table id="per-post-metrics-table" class="table table-bordered table-hover">
+                    <thead>
+                    <tr>
+                        <th>Post</th>
+                        <th>Likes</th>
+                        <th>Comments</th>
+                        <th>Reach</th>
+                        <th>ER (%)</th>
+                        <th>ERR (%)</th>
+                        <th>CERI</th>
+                    </tr>
+                    </thead>
+                    <tbody id="per-post-tbody"></tbody>
+                </table>
+            </div>
+
             <h2>Post Performance Chart</h2>
-            <p>Showing reach for the most recent posts in the selected period.</p>
+            <p class="text-muted">Showing reach for the most recent posts in the selected period.</p>
             <canvas id="metrics-chart"></canvas>
         </div>
         <div id="status-message"></div>
     </div>
 
     <div id="loader" class="view">
-        <div class="spinner"></div>
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     (function() {
         // --- CONFIGURATION ---
@@ -251,49 +237,47 @@
         const dataView = document.getElementById('data-view');
         const loader = document.getElementById('loader');
         const loginButton = document.getElementById('login-button');
-        const pageSelect = document.getElementById('page-select');
+        const pageDropdownButton = document.getElementById('page-dropdown-button');
+        const pageSelectList = document.getElementById('page-select-list');
         const startDateInput = document.getElementById('start-date');
         const endDateInput = document.getElementById('end-date');
         const fetchButton = document.getElementById('fetch-button');
         const resultsArea = document.getElementById('results-area');
         const statusMessage = document.getElementById('status-message');
+        const perPostTbody = document.getElementById('per-post-tbody');
 
-        let chartInstance = null; // To hold the chart object
+        // CERI Input Elements
+        const w1Input = document.getElementById('w1-input');
+        const w2Input = document.getElementById('w2-input');
+        const roiInput = document.getElementById('roi-input');
+        const maxRoiInput = document.getElementById('max-roi-input');
+        const cpeInput = document.getElementById('cpe-input');
+        const maxCpeInput = document.getElementById('max-cpe-input');
+
+        let chartInstance = null;
+        let selectedPage = null;
 
         // --- INITIALIZATION ---
         window.fbAsyncInit = function() {
-            FB.init({
-                appId: FB_APP_ID,
-                cookie: true,
-                xfbml: true,
-                version: FB_API_VERSION
-            });
-
-            FB.getLoginStatus(function(response) {
-                statusChangeCallback(response);
-            });
+            FB.init({ appId: FB_APP_ID, cookie: true, xfbml: true, version: FB_API_VERSION });
+            FB.getLoginStatus(statusChangeCallback);
         };
 
-        // Load the SDK asynchronously
         (function(d, s, id) {
             var js, fjs = d.getElementsByTagName(s)[0];
             if (d.getElementById(id)) return;
-            js = d.createElement(s);
-            js.id = id;
+            js = d.createElement(s); js.id = id;
             js.src = "https://connect.facebook.net/en_US/sdk.js";
             fjs.parentNode.insertBefore(js, fjs);
         }(document, 'script', 'facebook-jssdk'));
 
-
-        // --- UI CONTROL FUNCTIONS ---
+        // --- UI & HELPERS ---
         function showView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
         }
 
-        function showLoader(show) {
-            loader.style.display = show ? 'flex' : 'none';
-        }
+        function showLoader(show) { loader.style.display = show ? 'flex' : 'none'; }
 
         function setStatus(message, isError = false) {
             statusMessage.textContent = message;
@@ -301,11 +285,30 @@
             statusMessage.style.display = message ? 'block' : 'none';
         }
 
+        function initializeTooltips() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                const existingTooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+                if (existingTooltip) {
+                    existingTooltip.dispose();
+                }
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+
+        function getCeriDescription(ceri) {
+            if (ceri > 0.05) return "Excellent: Strong balance of high engagement and efficient ad parameters.";
+            if (ceri > 0.02) return "Good: Solid performance. Consider scaling successful strategies.";
+            if (ceri > 0) return "Average: Room for improvement in either engagement or ad cost efficiency.";
+            return "Action Required: Indicates very low engagement or that cost outweighs return in the formula. Review post content and ad parameters.";
+        }
+
         // --- AUTHENTICATION ---
         function statusChangeCallback(response) {
             showLoader(false);
             if (response.status === 'connected') {
                 showView('data-view');
+                initializeTooltips(); // Initialize tooltips on static elements
                 fetchUserPages();
             } else {
                 showView('login-view');
@@ -314,30 +317,33 @@
 
         function handleLogin() {
             showLoader(true);
-            // Request permissions needed to read page data and insights
-            FB.login(statusChangeCallback, {
-                scope: 'pages_show_list,pages_read_engagement,read_insights'
-            });
+            FB.login(statusChangeCallback, { scope: 'pages_show_list,pages_read_engagement,read_insights' });
         }
 
         // --- DATA FETCHING ---
         async function fetchUserPages() {
             try {
-                const response = await new Promise(resolve => {
-                    FB.api('/me/accounts', { fields: 'name,id,access_token' }, resolve);
-                });
-
+                const response = await new Promise(resolve => FB.api('/me/accounts', { fields: 'name,id,access_token' }, resolve));
                 if (response && response.data) {
-                    pageSelect.innerHTML = ''; // Clear previous options
+                    pageSelectList.innerHTML = '';
                     response.data.forEach(page => {
-                        const option = document.createElement('option');
-                        option.value = JSON.stringify({ id: page.id, access_token: page.access_token });
-                        option.textContent = page.name;
-                        pageSelect.appendChild(option);
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.className = 'dropdown-item'; a.href = '#'; a.textContent = page.name;
+                        a.onclick = (e) => {
+                            e.preventDefault();
+                            selectedPage = { id: page.id, access_token: page.access_token };
+                            pageDropdownButton.textContent = page.name;
+                        };
+                        li.appendChild(a);
+                        pageSelectList.appendChild(li);
                     });
-                } else {
-                    throw new Error("Could not fetch pages.");
-                }
+                    if (response.data.length > 0) {
+                        const firstPage = response.data[0];
+                        selectedPage = { id: firstPage.id, access_token: firstPage.access_token };
+                        pageDropdownButton.textContent = firstPage.name;
+                    }
+                } else { throw new Error("Could not fetch pages."); }
             } catch (error) {
                 console.error('Error fetching pages:', error);
                 setStatus('Could not fetch your pages. Please check your permissions and try again.', true);
@@ -348,39 +354,24 @@
             showLoader(true);
             resultsArea.style.display = 'none';
             setStatus('');
+            if (!selectedPage) {
+                setStatus('Please select a Facebook Page first.', true);
+                showLoader(false);
+                return;
+            }
 
             try {
-                const selectedPage = JSON.parse(pageSelect.value);
-                const pageId = selectedPage.id;
-                const pageAccessToken = selectedPage.access_token;
-
+                const { id: pageId, access_token: pageAccessToken } = selectedPage;
                 const startDate = Math.floor(new Date(startDateInput.value).getTime() / 1000);
                 const endDate = Math.floor(new Date(endDateInput.value).getTime() / 1000);
 
-                if (isNaN(startDate) || isNaN(endDate)) {
-                    throw new Error("Invalid date range selected.");
-                }
+                if (isNaN(startDate) || isNaN(endDate)) throw new Error("Invalid date range.");
 
-                // Define API requests
-                const fanCountRequest = {
-                    method: 'GET',
-                    relative_url: `${pageId}?fields=fan_count`
-                };
+                const fanCountRequest = { method: 'GET', relative_url: `${pageId}?fields=fan_count` };
+                const postsRequest = { method: 'GET', relative_url: `${pageId}/posts?fields=message,created_time,likes.summary(true),comments.summary(true),insights.metric(post_impressions,post_impressions_organic)&since=${startDate}&until=${endDate}&limit=100` };
+                const batchResponse = await new Promise(resolve => FB.api('/', 'POST', { access_token: pageAccessToken, batch: [fanCountRequest, postsRequest] }, resolve));
 
-                const postsRequest = {
-                    method: 'GET',
-                    relative_url: `${pageId}/posts?fields=message,created_time,likes.summary(true),comments.summary(true),insights.metric(post_impressions,post_impressions_organic)&since=${startDate}&until=${endDate}&limit=100`
-                };
-
-                // Use a batch request for efficiency
-                const batchResponse = await new Promise(resolve => {
-                    FB.api('/', 'POST', {
-                        access_token: pageAccessToken,
-                        batch: [fanCountRequest, postsRequest]
-                    }, resolve);
-                });
-
-                if(batchResponse.error) throw new Error(batchResponse.error.message);
+                if (batchResponse.error) throw new Error(batchResponse.error.message);
 
                 const fanCountResponse = JSON.parse(batchResponse[0].body);
                 const postsResponse = JSON.parse(batchResponse[1].body);
@@ -393,12 +384,9 @@
 
                 if (posts.length === 0) {
                     setStatus('No posts found in the selected date range.');
-                    showLoader(false);
                     return;
                 }
-
                 processAndDisplayMetrics(posts, fanCount);
-
             } catch (error) {
                 console.error('Error fetching metrics:', error);
                 setStatus(`An error occurred: ${error.message}`, true);
@@ -409,57 +397,80 @@
 
         // --- DATA PROCESSING & DISPLAY ---
         function processAndDisplayMetrics(posts, fanCount) {
-            let totalLikes = 0;
-            let totalComments = 0;
-            let totalReach = 0;
-            let totalOrganicReach = 0;
+            let totalLikes = 0, totalComments = 0, totalReach = 0, totalOrganicReach = 0;
+            const ceriParams = {
+                w1: parseFloat(w1Input.value), w2: parseFloat(w2Input.value),
+                ROI: parseFloat(roiInput.value) / 100, MaxROI: parseFloat(maxRoiInput.value) / 100,
+                CPE: parseFloat(cpeInput.value), MaxCPE: parseFloat(maxCpeInput.value)
+            };
+
+            perPostTbody.innerHTML = '';
 
             posts.forEach(post => {
-                totalLikes += post.likes?.summary?.total_count || 0;
-                totalComments += post.comments?.summary?.total_count || 0;
+                const postLikes = post.likes?.summary?.total_count || 0;
+                const postComments = post.comments?.summary?.total_count || 0;
+                const postReach = post.insights?.data.find(m => m.name === 'post_impressions')?.values[0]?.value || 0;
 
-                const insightsData = post.insights?.data;
-                if (insightsData) {
-                    const reachMetric = insightsData.find(m => m.name === 'post_impressions');
-                    const organicReachMetric = insightsData.find(m => m.name === 'post_impressions_organic');
+                totalLikes += postLikes;
+                totalComments += postComments;
+                totalReach += postReach;
+                totalOrganicReach += post.insights?.data.find(m => m.name === 'post_impressions_organic')?.values[0]?.value || 0;
 
-                    totalReach += reachMetric?.values[0]?.value || 0;
-                    totalOrganicReach += organicReachMetric?.values[0]?.value || 0;
-                }
+                const postEngagements = postLikes + postComments;
+                const postEr = fanCount > 0 ? (postEngagements / fanCount) * 100 : 0;
+                const postErr = postReach > 0 ? (postEngagements / postReach) * 100 : 0;
+                const postCeri = calculateCeri(postEr, postErr, ceriParams);
+                const ceriTooltip = getCeriDescription(postCeri);
+                const postMessage = post.message ? post.message.substring(0, 100) + '...' : `Post from ${new Date(post.created_time).toLocaleDateString()}`;
+
+                const rowHtml = `
+                    <tr>
+                        <td class="post-message" title="${post.message || ''}">${postMessage}</td>
+                        <td>${postLikes.toLocaleString()}</td>
+                        <td>${postComments.toLocaleString()}</td>
+                        <td>${postReach.toLocaleString()}</td>
+                        <td>${postEr.toFixed(2)}</td>
+                        <td>${postErr.toFixed(2)}</td>
+                        <td data-bs-toggle="tooltip" data-bs-placement="top" title="${ceriTooltip}">${postCeri.toFixed(4)}</td>
+                    </tr>
+                `;
+                perPostTbody.innerHTML += rowHtml;
             });
 
             const totalEngagements = totalLikes + totalComments;
+            const erValue = fanCount > 0 ? (totalEngagements / fanCount) * 100 : 0;
+            const errValue = totalReach > 0 ? (totalEngagements / totalReach) * 100 : 0;
+            const totalCeri = calculateCeri(erValue, errValue, ceriParams);
 
-            // Calculate ER (Engagement Rate by Followers)
-            // Note: This uses the current fan count as an approximation.
-            const er = fanCount > 0 ? ((totalEngagements / fanCount) * 100).toFixed(2) + '%' : 'N/A';
-
-            // Calculate ERR (Engagement Rate by Reach)
-            const err = totalReach > 0 ? ((totalEngagements / totalReach) * 100).toFixed(2) + '%' : 'N/A';
-
-            // Update the table
             document.getElementById('total-likes').textContent = totalLikes.toLocaleString();
             document.getElementById('total-comments').textContent = totalComments.toLocaleString();
             document.getElementById('total-reach').textContent = totalReach.toLocaleString();
             document.getElementById('organic-reach').textContent = totalOrganicReach.toLocaleString();
-            document.getElementById('er').textContent = er;
-            document.getElementById('err').textContent = err;
+            document.getElementById('er').textContent = erValue.toFixed(2) + '%';
+            document.getElementById('err').textContent = errValue.toFixed(2) + '%';
+            const ceriCell = document.getElementById('ceri');
+            ceriCell.textContent = totalCeri.toFixed(4);
+            ceriCell.setAttribute('data-bs-title', getCeriDescription(totalCeri));
 
             renderChart(posts);
-
             resultsArea.style.display = 'block';
+            initializeTooltips(); // Re-initialize tooltips for dynamic content
+        }
+
+        function calculateCeri(er, err, params) {
+            const { w1, w2, ROI, MaxROI, CPE, MaxCPE } = params;
+            if (isNaN(w1) || isNaN(w2) || isNaN(ROI) || isNaN(MaxROI) || isNaN(CPE) || isNaN(MaxCPE)) return 0;
+            const engagementComponent = (w1 * (er / 100)) + (w2 * (err / 100));
+            const roiComponent = MaxROI > 0 ? ROI / MaxROI : 0;
+            const cpeComponent = MaxCPE > 0 ? CPE / MaxCPE : 0;
+            const financialComponent = 1 + roiComponent - cpeComponent;
+            return engagementComponent * financialComponent;
         }
 
         function renderChart(posts) {
+            if (chartInstance) chartInstance.destroy();
             const ctx = document.getElementById('metrics-chart').getContext('2d');
-
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            // Use the most recent 15 posts for chart clarity
             const chartPosts = posts.slice(0, 15).reverse();
-
             const labels = chartPosts.map((p, i) => `Post ${i + 1}`);
             const reachData = chartPosts.map(p => p.insights?.data.find(m => m.name === 'post_impressions')?.values[0]?.value || 0);
             const organicReachData = chartPosts.map(p => p.insights?.data.find(m => m.name === 'post_impressions_organic')?.values[0]?.value || 0);
@@ -468,41 +479,18 @@
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Total Reach',
-                        data: reachData,
-                        backgroundColor: 'rgba(24, 119, 242, 0.7)',
-                        borderColor: 'rgba(24, 119, 242, 1)',
-                        borderWidth: 1
-                    }, {
-                        label: 'Organic Reach',
-                        data: organicReachData,
-                        backgroundColor: 'rgba(52, 168, 83, 0.7)',
-                        borderColor: 'rgba(52, 168, 83, 1)',
-                        borderWidth: 1
-                    }]
+                    datasets: [
+                        { label: 'Total Reach', data: reachData, backgroundColor: 'rgba(24, 119, 242, 0.7)' },
+                        { label: 'Organic Reach', data: organicReachData, backgroundColor: 'rgba(52, 168, 83, 0.7)' }
+                    ]
                 },
                 options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    if (value >= 1000) {
-                                        return (value / 1000) + 'k';
-                                    }
-                                    return value;
-                                }
-                            }
-                        }
-                    },
+                    scales: { y: { beginAtZero: true } },
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                title: (tooltipItems) => {
-                                    const index = tooltipItems[0].dataIndex;
-                                    // Display post message or created date as tooltip title
-                                    const post = chartPosts[index];
+                                title: (items) => {
+                                    const post = chartPosts[items[0].dataIndex];
                                     return post.message ? post.message.substring(0, 50) + '...' : new Date(post.created_time).toLocaleDateString();
                                 }
                             }
@@ -512,23 +500,20 @@
             });
         }
 
-        // --- EVENT LISTENERS ---
+        // --- EVENT LISTENERS & INITIAL STATE ---
         loginButton.addEventListener('click', handleLogin);
         fetchButton.addEventListener('click', fetchMetrics);
 
-        // --- SET INITIAL STATE ---
         function setDefaultDates() {
             const today = new Date();
             const pastDate = new Date();
-            pastDate.setDate(today.getDate() - 29); // Default to last 30 days
-
+            pastDate.setDate(today.getDate() - 29);
             endDateInput.value = today.toISOString().split('T')[0];
             startDateInput.value = pastDate.toISOString().split('T')[0];
         }
 
         setDefaultDates();
-        showLoader(true); // Show loader initially until FB SDK determines login status
-
+        showLoader(true);
     })();
 </script>
 
